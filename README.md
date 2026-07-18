@@ -196,6 +196,6 @@ Este proyecto está bajo la licencia **MIT**. Consulta el archivo `LICENSE` para
 
 ---
 
-Hecho con 📡 y 🐍 por el equipo de **ScanPa**
+Hecho con 📡 y 🐍 por el equipo de **AlexeyTechSec**
 
 </div>
