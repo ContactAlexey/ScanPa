@@ -47,6 +47,22 @@
 
 ---
 
+## 🔌 Hardware y firmware utilizados
+
+Este proyecto ha sido desarrollado y probado con la siguiente placa y configuración específica. Si usas un chip distinto, los drivers/firmware podrían variar:
+
+```
+Connected to ESP32 on COM3:
+Chip type: ESP32-D0WD-V3 (revision v3.1)
+Features: Wi-Fi, BT, Dual Core + LP Core, 240MHz, Vref calibration in eFuse, Coding Scheme None
+Crystal frequency: 40MHz
+MAC:  08:b6:1f:b8:be:08
+```
+
+> ⚠️ **Nota:** si usas otra placa (ESP8266, otra revisión de ESP32, etc.), asegúrate de instalar el firmware de MicroPython correspondiente a tu chip específico desde [micropython.org/download](https://micropython.org/download/), ya que el firmware no es intercambiable entre distintos chips.
+
+---
+
 ## 🧰 Requisitos
 
 - **Python 3.x** instalado en tu ordenador.
@@ -180,6 +196,6 @@ Este proyecto está bajo la licencia **MIT**. Consulta el archivo `LICENSE` para
 
 ---
 
-Hecho con 📡 y 🐍 por AlexeyTechSec
+Hecho con 📡 y 🐍 por el equipo de **ScanPa**
 
 </div>
