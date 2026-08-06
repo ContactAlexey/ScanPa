@@ -179,8 +179,7 @@ scanpa/
 ---
 
 ## 🗺️ Roadmap
-
-- [ ] Exportar resultados a CSV/JSON
+- [ ] Exportar resultados a TXT ✅
 - [ ] Modo de escaneo continuo (monitorización en tiempo real)
 - [ ] Soporte multiplataforma automático para detección de puerto
 - [ ] Interfaz gráfica (GUI) opcional
