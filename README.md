@@ -15,7 +15,7 @@
 </div>
 
 <p align="center">
-  <b>ScanPa</b> es una herramienta de línea de comandos que utiliza una placa MicroPython (ESP32 / ESP8266) conectada por USB para <b>escanear puntos de acceso WiFi</b> cercanos y mostrar un informe claro y ordenado directamente en tu terminal, con estimación de distancia y registro automático en TXT.
+  <b>ScanPa</b> es una herramienta de línea de comandos que utiliza una placa MicroPython (ESP32 / ESP8266) conectada por USB para <b>escanear puntos de acceso WiFi</b> cercanos y mostrar un informe claro y ordenado directamente en tu terminal, con identificación de fabricante, estimación de distancia y registro automático en TXT.
 </p>
 
 ---
@@ -27,6 +27,7 @@
 - [Instalación](#-instalación)
 - [Uso](#-uso)
 - [Ejemplo de salida](#-ejemplo-de-salida)
+- [Identificación de fabricante (OUI)](#-identificación-de-fabricante-oui)
 - [Registro en TXT](#-registro-en-txt)
 - [Estimación de distancia](#-estimación-de-distancia)
 - [Cómo funciona](#-cómo-funciona)
@@ -40,12 +41,13 @@
 ## ✨ Características
 
 - 🔍 **Escaneo de redes WiFi** cercanas usando el chip WiFi de la propia placa MicroPython.
+- 🏭 **Identificación del fabricante** de cada punto de acceso a partir de su MAC (OUI), **100% offline**, con tabla local descargable y overrides manuales.
 - 📶 **Cálculo de calidad de señal** (RSSI convertido a porcentaje y etiqueta descriptiva).
 - 📏 **Estimación de distancia aproximada** (en metros) a cada punto de acceso a partir del RSSI.
 - 🔐 **Detección del tipo de seguridad** de cada red (Abierta, WEP, WPA, WPA2, WPA3...).
-- 🆔 Muestra **SSID, BSSID (MAC), canal, banda (2.4/5 GHz)** y si la red está oculta.
+- 🆔 Muestra **SSID, BSSID (MAC), fabricante, canal, banda (2.4/5 GHz)** y si la red está oculta.
 - 🏆 Identifica automáticamente la **red con mejor señal**.
-- 📝 **Registro automático en TXT**: cada escaneo se guarda en un archivo con fecha y hora.
+- 📝 **Registro automático en TXT**: cada escaneo se guarda en un archivo con fecha y hora, incluyendo el fabricante detectado.
 - ✅ **Comprobación automática de la placa**: si no está conectada, te avisa y espera a que la conectes antes de escanear.
 - 🎨 Interfaz de terminal con **título ASCII** y mensajes claros de estado.
 
@@ -78,6 +80,7 @@ MAC:  08:b6:1f:b8:be:08
 
 - Una placa compatible con **MicroPython** (ESP32 o ESP8266) con firmware de MicroPython ya cargado.
 - Cable USB de datos (no solo de carga) para conectar la placa al ordenador.
+- El fichero `oui_local.json` con la tabla de fabricantes (ver [Identificación de fabricante](#-identificación-de-fabricante-oui)). Es opcional, pero sin él solo se reconocerán los fabricantes que añadas a mano.
 
 ---
 
@@ -96,9 +99,17 @@ MAC:  08:b6:1f:b8:be:08
    pip install mpremote
    ```
 
-3. Conecta tu placa MicroPython por USB.
+3. (Recomendado) Genera la tabla local de fabricantes, una única vez y con conexión a internet:
 
-4. (Opcional) Comprueba el puerto en el que se ha conectado tu placa y ajústalo en el script si es necesario (ver [Configuración](#-uso)).
+   ```bash
+   python descargar_oui.py
+   ```
+
+   Esto crea `oui_local.json` en el directorio del proyecto. A partir de aquí, `scanpa.py` funciona **completamente offline** para identificar fabricantes.
+
+4. Conecta tu placa MicroPython por USB.
+
+5. (Opcional) Comprueba el puerto en el que se ha conectado tu placa y ajústalo en el script si es necesario (ver [Configuración](#-uso)).
 
 ---
 
@@ -136,15 +147,38 @@ PUERTO = "COM3"   # Cambia por el puerto de tu placa
 ## 🖥️ Ejemplo de salida
 
 ```
-SSID                 BSSID              Canal   RSSI    Calidad      Dist. (m)   Seguridad          Oculta
---------------------------------------------------------------------------------------------------------------
-MiRed_5G             aa:bb:cc:dd:ee:ff  36      -45     Excelente    0.32        WPA2-PSK           No
-Vecino_WiFi          11:22:33:44:55:66  6       -62     Muy buena    1.75        WPA/WPA2-PSK       No
-CAFE_FREE_WIFI       77:88:99:aa:bb:cc  11      -78     Débil        10.8        Abierta (sin ...)  No
---------------------------------------------------------------------------------------------------------------
+SSID                 BSSID              Fabricante             Canal   RSSI    Calidad      Dist. (m)   Seguridad          Oculta
+---------------------------------------------------------------------------------------------------------------------------------
+MiRed_5G             aa:bb:cc:dd:ee:ff  TP-Link                36      -45     Excelente    0.32        WPA2-PSK           No
+Vecino_WiFi          11:22:33:44:55:66  Huawei                 6       -62     Muy buena    1.75        WPA/WPA2-PSK       No
+CAFE_FREE_WIFI       77:88:99:aa:bb:cc  Desconocido            11      -78     Débil        10.8        Abierta (sin ...)  No
+---------------------------------------------------------------------------------------------------------------------------------
 
-Red más potente: MiRed_5G | -45 dBm | Calidad: Excelente (100%) | Distancia aprox.: 0.32 m
+Red más potente: MiRed_5G | TP-Link | -45 dBm | Calidad: Excelente (100%) | Distancia aprox.: 0.32 m
 ```
+
+---
+
+## 🏭 Identificación de fabricante (OUI)
+
+ScanPa identifica el fabricante de cada punto de acceso a partir de los tres primeros bytes de su BSSID (MAC), conocidos como **OUI** (*Organizationally Unique Identifier*), sin necesidad de conexión a internet durante el escaneo.
+
+La resolución sigue este orden de prioridad:
+
+1. **`FABRICANTES_LOCALES`**: diccionario editable a mano al principio de `scanpa.py`, pensado para anotar routers concretos de tu entorno (operadora, vecinos...). Tiene prioridad sobre cualquier otra fuente.
+
+   ```python
+   FABRICANTES_LOCALES = {
+       "F8:0B:BE": "Movistar (router HGU)",
+       "AC:9B:0A": "Vodafone (router)",
+   }
+   ```
+
+2. **`oui_local.json`**: tabla completa de fabricantes, generada una única vez con `descargar_oui.py` (requiere internet solo en ese momento). Se carga en memoria al arrancar el script y se consulta sin volver a tocar disco por cada red.
+
+3. Si el OUI no aparece en ninguna de las dos fuentes anteriores, se muestra como **"Desconocido"**.
+
+Si `oui_local.json` no existe, ScanPa avisa por consola y sigue funcionando igualmente, solo que únicamente reconocerá los fabricantes que hayas añadido a mano en `FABRICANTES_LOCALES`.
 
 ---
 
@@ -153,10 +187,10 @@ Red más potente: MiRed_5G | -45 dBm | Calidad: Excelente (100%) | Distancia apr
 Cada vez que se completa un escaneo, ScanPa genera automáticamente un archivo de texto con el sello de fecha y hora del momento del escaneo, por ejemplo:
 
 ```
-2025-06-14_18-32-07 registro.txt
+2026-08-06_15-30-00 registro.txt
 ```
 
-El archivo se guarda en el directorio desde el que se ejecuta el script y contiene, por cada red detectada, el SSID, BSSID, canal, RSSI, calidad, distancia aproximada, tipo de seguridad y si la red está oculta, en formato de una línea por red.
+El archivo se guarda en el directorio desde el que se ejecuta el script y contiene, por cada red detectada, el SSID, BSSID, fabricante, canal, RSSI, calidad, distancia aproximada, tipo de seguridad y si la red está oculta, en formato de una línea por red.
 
 ---
 
@@ -182,7 +216,7 @@ Por defecto, el script usa valores calibrados con una única medición real (`RS
 1. **Conexión con la placa**: ScanPa utiliza `mpremote` para comunicarse con la placa MicroPython vía el puerto serie/USB.
 2. **Verificación previa**: antes de escanear, se envía un comando de prueba (`print('ok')`) a la placa para confirmar que responde correctamente.
 3. **Escaneo WiFi**: se activa la interfaz `network.WLAN(network.STA_IF)` en la placa y se ejecuta `scan()`, que devuelve la lista de redes detectadas.
-4. **Procesamiento**: los datos recibidos (SSID, BSSID, canal, RSSI, seguridad, visibilidad) se decodifican, se calcula la calidad de la señal y se estima la distancia aproximada a partir del RSSI.
+4. **Procesamiento**: los datos recibidos (SSID, BSSID, canal, RSSI, seguridad, visibilidad) se decodifican, se identifica el **fabricante** a partir del OUI de la MAC, se calcula la calidad de la señal y se estima la distancia aproximada a partir del RSSI.
 5. **Registro**: los resultados se vuelcan automáticamente a un archivo `.txt` con fecha y hora.
 6. **Visualización**: los resultados se ordenan de mayor a menor potencia de señal y se muestran en una tabla en la terminal.
 
@@ -193,6 +227,8 @@ Por defecto, el script usa valores calibrados con una única medición real (`RS
 ```
 scanpa/
 ├── scanpa.py                          # Script principal
+├── descargar_oui.py                   # Genera oui_local.json (ejecutar una vez, requiere internet)
+├── oui_local.json                     # Tabla de fabricantes por OUI (generada, no editar a mano)
 ├── logo/
 │   └── scanpa_logo.png
 ├── YYYY-MM-DD_HH-MM-SS registro.txt   # Registros generados por cada escaneo
@@ -211,6 +247,8 @@ scanpa/
 | No aparecen redes | WiFi de la placa no soporta modo STA | Verifica que tu placa (ESP32/ESP8266) soporte `network.STA_IF` |
 | Caracteres extraños en SSID | Codificación del nombre de red | El script ya maneja errores de decodificación con `errors="ignore"` |
 | Distancia estimada poco realista | Calibración por defecto no se ajusta a tu entorno | Ajusta `rssi_1m` y `n` en `estimar_distancia()` con mediciones propias |
+| Todos los fabricantes salen como "Desconocido" | Falta `oui_local.json` | Ejecuta `python descargar_oui.py` una vez (con internet) |
+| `oui_local.json` no se pudo leer | Fichero corrupto o permisos incorrectos | Vuelve a ejecutar `python descargar_oui.py` para regenerarlo |
 
 ---
 
@@ -218,6 +256,7 @@ scanpa/
 
 - [x] Exportar resultados a TXT
 - [x] Calcular distancia de los puntos de acceso
+- [x] Identificación de fabricante por OUI (offline)
 - [ ] Modo de escaneo continuo (monitorización en tiempo real)
 - [ ] Soporte multiplataforma automático para detección de puerto
 - [ ] Interfaz gráfica (GUI) opcional
