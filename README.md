@@ -15,7 +15,7 @@
 </div>
 
 <p align="center">
-  <b>ScanPa</b> es una herramienta de línea de comandos que utiliza una placa MicroPython (ESP32 / ESP8266) conectada por USB para <b>escanear puntos de acceso WiFi</b> cercanos y mostrar un informe claro y ordenado directamente en tu terminal.
+  <b>ScanPa</b> es una herramienta de línea de comandos que utiliza una placa MicroPython (ESP32 / ESP8266) conectada por USB para <b>escanear puntos de acceso WiFi</b> cercanos y mostrar un informe claro y ordenado directamente en tu terminal, con estimación de distancia y registro automático en TXT.
 </p>
 
 ---
@@ -27,6 +27,8 @@
 - [Instalación](#-instalación)
 - [Uso](#-uso)
 - [Ejemplo de salida](#-ejemplo-de-salida)
+- [Registro en TXT](#-registro-en-txt)
+- [Estimación de distancia](#-estimación-de-distancia)
 - [Cómo funciona](#-cómo-funciona)
 - [Estructura del proyecto](#-estructura-del-proyecto)
 - [Solución de problemas](#-solución-de-problemas)
@@ -39,9 +41,11 @@
 
 - 🔍 **Escaneo de redes WiFi** cercanas usando el chip WiFi de la propia placa MicroPython.
 - 📶 **Cálculo de calidad de señal** (RSSI convertido a porcentaje y etiqueta descriptiva).
+- 📏 **Estimación de distancia aproximada** (en metros) a cada punto de acceso a partir del RSSI.
 - 🔐 **Detección del tipo de seguridad** de cada red (Abierta, WEP, WPA, WPA2, WPA3...).
 - 🆔 Muestra **SSID, BSSID (MAC), canal, banda (2.4/5 GHz)** y si la red está oculta.
 - 🏆 Identifica automáticamente la **red con mejor señal**.
+- 📝 **Registro automático en TXT**: cada escaneo se guarda en un archivo con fecha y hora.
 - ✅ **Comprobación automática de la placa**: si no está conectada, te avisa y espera a que la conectes antes de escanear.
 - 🎨 Interfaz de terminal con **título ASCII** y mensajes claros de estado.
 
@@ -115,7 +119,7 @@ Pulsa Enter para comenzar...
 A continuación comprobará si la placa está conectada:
 
 - ❌ Si **no detecta la placa**, mostrará un error y esperará a que la conectes, reintentando cada vez que pulses Enter.
-- ✅ Si la placa **está conectada**, comenzará el escaneo automáticamente y mostrará los resultados.
+- ✅ Si la placa **está conectada**, comenzará el escaneo automáticamente, guardará un registro en TXT y mostrará los resultados en pantalla.
 
 ### ⚙️ Configurar el puerto
 
@@ -132,15 +136,44 @@ PUERTO = "COM3"   # Cambia por el puerto de tu placa
 ## 🖥️ Ejemplo de salida
 
 ```
-SSID                 BSSID              Canal   RSSI    Calidad      Seguridad          Oculta
-----------------------------------------------------------------------------------------------------
-MiRed_5G             aa:bb:cc:dd:ee:ff  36      -45     Excelente    WPA2-PSK           No
-Vecino_WiFi          11:22:33:44:55:66  6       -62     Muy buena    WPA/WPA2-PSK       No
-CAFE_FREE_WIFI       77:88:99:aa:bb:cc  11      -78     Débil        Abierta (sin ...)  No
-----------------------------------------------------------------------------------------------------
+SSID                 BSSID              Canal   RSSI    Calidad      Dist. (m)   Seguridad          Oculta
+--------------------------------------------------------------------------------------------------------------
+MiRed_5G             aa:bb:cc:dd:ee:ff  36      -45     Excelente    0.32        WPA2-PSK           No
+Vecino_WiFi          11:22:33:44:55:66  6       -62     Muy buena    1.75        WPA/WPA2-PSK       No
+CAFE_FREE_WIFI       77:88:99:aa:bb:cc  11      -78     Débil        10.8        Abierta (sin ...)  No
+--------------------------------------------------------------------------------------------------------------
 
-Red más potente: MiRed_5G | -45 dBm | Calidad: Excelente (100%)
+Red más potente: MiRed_5G | -45 dBm | Calidad: Excelente (100%) | Distancia aprox.: 0.32 m
 ```
+
+---
+
+## 📝 Registro en TXT
+
+Cada vez que se completa un escaneo, ScanPa genera automáticamente un archivo de texto con el sello de fecha y hora del momento del escaneo, por ejemplo:
+
+```
+2025-06-14_18-32-07 registro.txt
+```
+
+El archivo se guarda en el directorio desde el que se ejecuta el script y contiene, por cada red detectada, el SSID, BSSID, canal, RSSI, calidad, distancia aproximada, tipo de seguridad y si la red está oculta, en formato de una línea por red.
+
+---
+
+## 📏 Estimación de distancia
+
+ScanPa calcula una distancia aproximada (en metros) a cada punto de acceso a partir del RSSI, usando el modelo de pérdida de trayecto logarítmico:
+
+```
+distancia = 10 ^ ((RSSI_1m − RSSI) / (10 × n))
+```
+
+- **RSSI_1m**: nivel de señal de referencia a 1 metro.
+- **n**: exponente de pérdida de trayecto (depende del entorno: espacio libre, paredes, obstáculos...).
+
+Por defecto, el script usa valores calibrados con una única medición real (`RSSI_1m = -63.4 dBm`, `n = 2.0`, correspondiente a espacio casi libre), tomada con una red de referencia a ~0.60 m con una pared de por medio. Al no disponerse de un segundo punto de calibración, `n` se ha fijado y `RSSI_1m` se ha despejado a partir de esa medición.
+
+> ⚠️ Esta es una **estimación aproximada**, no una medición precisa. El RSSI se ve afectado por paredes, interferencias y el propio hardware, así que la distancia real puede variar. Para mayor precisión en tu entorno, puedes recalibrar `rssi_1m` y `n` en la función `estimar_distancia()` con tus propias mediciones.
 
 ---
 
@@ -149,8 +182,9 @@ Red más potente: MiRed_5G | -45 dBm | Calidad: Excelente (100%)
 1. **Conexión con la placa**: ScanPa utiliza `mpremote` para comunicarse con la placa MicroPython vía el puerto serie/USB.
 2. **Verificación previa**: antes de escanear, se envía un comando de prueba (`print('ok')`) a la placa para confirmar que responde correctamente.
 3. **Escaneo WiFi**: se activa la interfaz `network.WLAN(network.STA_IF)` en la placa y se ejecuta `scan()`, que devuelve la lista de redes detectadas.
-4. **Procesamiento**: los datos recibidos (SSID, BSSID, canal, RSSI, seguridad, visibilidad) se decodifican y se calcula la calidad de la señal.
-5. **Visualización**: los resultados se ordenan de mayor a menor potencia de señal y se muestran en una tabla en la terminal.
+4. **Procesamiento**: los datos recibidos (SSID, BSSID, canal, RSSI, seguridad, visibilidad) se decodifican, se calcula la calidad de la señal y se estima la distancia aproximada a partir del RSSI.
+5. **Registro**: los resultados se vuelcan automáticamente a un archivo `.txt` con fecha y hora.
+6. **Visualización**: los resultados se ordenan de mayor a menor potencia de señal y se muestran en una tabla en la terminal.
 
 ---
 
@@ -158,9 +192,10 @@ Red más potente: MiRed_5G | -45 dBm | Calidad: Excelente (100%)
 
 ```
 scanpa/
-├── scanpa.py          # Script principal
+├── scanpa.py                          # Script principal
 ├── logo/
 │   └── scanpa_logo.png
+├── YYYY-MM-DD_HH-MM-SS registro.txt   # Registros generados por cada escaneo
 ├── README.md
 └── requirements.txt
 ```
@@ -175,16 +210,19 @@ scanpa/
 | `mpremote` no encontrado | No está instalado | Ejecuta `pip install mpremote` |
 | No aparecen redes | WiFi de la placa no soporta modo STA | Verifica que tu placa (ESP32/ESP8266) soporte `network.STA_IF` |
 | Caracteres extraños en SSID | Codificación del nombre de red | El script ya maneja errores de decodificación con `errors="ignore"` |
+| Distancia estimada poco realista | Calibración por defecto no se ajusta a tu entorno | Ajusta `rssi_1m` y `n` en `estimar_distancia()` con mediciones propias |
 
 ---
 
 ## 🗺️ Roadmap
-- [ ] Exportar resultados a TXT ✅
+
+- [x] Exportar resultados a TXT
+- [x] Calcular distancia de los puntos de acceso
 - [ ] Modo de escaneo continuo (monitorización en tiempo real)
 - [ ] Soporte multiplataforma automático para detección de puerto
 - [ ] Interfaz gráfica (GUI) opcional
 - [ ] Alertas de redes nuevas/desconocidas
-- [ ] Calcular distancia de los puntos de acceso ✅
+- [ ] Calibración de distancia con múltiples puntos de referencia
 
 ---
 
