@@ -18,6 +18,25 @@
   <b>ScanPa</b> es una herramienta de línea de comandos que utiliza una placa MicroPython (ESP32 / ESP8266) conectada por USB para <b>escanear puntos de acceso WiFi</b> cercanos y mostrar un informe claro y ordenado directamente en tu terminal, con identificación de fabricante, estimación de distancia y registro automático en TXT.
 </p>
 
+<br>
+
+```
+┌──○ ○ ○─────────────────────────────────────────────────────────────┐
+│ user@desktop:~/scanpa$ python scanpa.py                             │
+│                                                                       │
+│   ███████╗ ██████╗ █████╗ ███╗   ██╗    ██████╗   █████╗            │
+│   ██╔════╝██╔════╝██╔══██╗████╗  ██║    ██╔══██╗ ██╔══██╗           │
+│   ███████╗██║     ███████║██╔██╗ ██║    ██████╔╝ ███████║           │
+│   ╚════██║██║     ██╔══██╗██║╚██╗██║    ██╔═══╝  ██╔══██║           │
+│   ███████║╚██████╗██║  ██║██║ ╚████║    ██║      ██║  ██║           │
+│   ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═══╝    ╚═╝      ╚═╝  ╚═╝           │
+│                                                                       │
+│            📡  e s c a n e a n d o   p u n t o s   d e   a c c e s o │
+│                                                                       │
+│ Pulsa Enter para comenzar...█                                        │
+└───────────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## 📑 Índice
@@ -117,17 +136,25 @@ MAC:  08:b6:1f:b8:be:08
 
 Ejecuta el script desde la terminal:
 
-```bash
-python scanpa.py
+```
+┌──○ ○ ○─── terminal ───────────────────────────────────────────────┐
+│ $ python scanpa.py                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-El programa mostrará el título de bienvenida y esperará a que pulses **Enter** para comenzar:
+El programa mostrará el título de bienvenida y esperará a que pulses **Enter** para comenzar. A continuación comprobará si la placa está conectada:
 
 ```
-Pulsa Enter para comenzar...
+┌──○ ○ ○─── scanpa.py ──────────────────────────────────────────────┐
+│                                                                     │
+│  ❌ ERROR: No se ha detectado ninguna placa en el puerto COM3.     │
+│     Conecta la placa por USB y pulsa Enter para reintentar         │
+│     (o Ctrl+C para salir)...                                       │
+│                                                                     │
+│  ✅ Placa detectada correctamente en COM3. Iniciando escaneo...    │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────┘
 ```
-
-A continuación comprobará si la placa está conectada:
 
 - ❌ Si **no detecta la placa**, mostrará un error y esperará a que la conectes, reintentando cada vez que pulses Enter.
 - ✅ Si la placa **está conectada**, comenzará el escaneo automáticamente, guardará un registro en TXT y mostrará los resultados en pantalla.
