@@ -1,6 +1,7 @@
 import subprocess
 import ast
 import sys
+from datetime import datetime
 
 PUERTO = "COM3"
 
@@ -125,6 +126,17 @@ def escaneo_redes():
 
     return redes
 
+def registrar_redes(redes):
+    nombre = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + " registro.txt"
+    with open(nombre, "w", encoding="utf-8") as file:
+        for red in redes:
+            file.write(
+                f"{red['ssid']} | {red['bssid']} | canal {red['canal']} | "
+                f"{red['rssi']} dBm | {red['calidad_txt']} | {red['seguridad']} | "
+                f"oculta: {red['oculta']}\n"
+            )
+
+
 
 def mostrar_resultados(redes):
     if not redes:
@@ -152,6 +164,7 @@ def main():
     esperar_placa()
 
     redes = escaneo_redes()
+    registrar_redes(redes)
     mostrar_resultados(redes)
 
 
