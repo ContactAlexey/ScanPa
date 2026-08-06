@@ -184,6 +184,7 @@ scanpa/
 - [ ] Soporte multiplataforma automático para detección de puerto
 - [ ] Interfaz gráfica (GUI) opcional
 - [ ] Alertas de redes nuevas/desconocidas
+- [ ] Calcular distancia de los puntos de acceso ✅
 
 ---
 
