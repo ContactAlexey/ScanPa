@@ -3,7 +3,9 @@ import ast           # Para convertir el texto que devuelve la placa en una list
 import sys
 import os
 import json
+import csv
 from datetime import datetime  # Para poner fecha y hora en el nombre del fichero de log
+
 
 # ---------- Configuración ----------
 
@@ -233,16 +235,52 @@ def escaneo_redes():
     return redes
 
 
-def registrar_redes(redes):
+def registrar_redes_txt(redes):
+    # Carpeta donde se guardan todos los logs TXT. Si no existe, se crea
+    # (exist_ok=True evita error si ya existe, así no hay que comprobarlo aparte).
+    carpeta = "log_txt"
+    os.makedirs(carpeta, exist_ok=True)
+
     # Nombre del log con fecha y hora, ej: "2026-08-06_15-30-00 registro.txt"
     nombre = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + " registro.txt"
-    with open(nombre, "w", encoding="utf-8") as file:
+    ruta = os.path.join(carpeta, nombre)
+
+    with open(ruta, "w", encoding="utf-8") as file:
         for red in redes:
             file.write(
                 f"{red['ssid']} | {red['bssid']} | {red['fabricante']} | canal {red['canal']} | "
                 f"{red['rssi']} dBm | {red['calidad_txt']} | ~{red['distancia_aprox_m']} m | "
                 f"{red['seguridad']} | oculta: {red['oculta']}\n"
             )
+
+
+def registrar_redes_csv(redes):
+    # Carpeta donde se guardan todos los logs CSV. Si no existe, se crea.
+    carpeta = "log_csv"
+    os.makedirs(carpeta, exist_ok=True)
+
+    # Mismo esquema de nombre que el TXT, pero con extensión .csv
+    nombre_archivo = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + " registro.csv"
+    ruta = os.path.join(carpeta, nombre_archivo)
+
+    columnas = ["SSID", "BSSID", "Fabricante", "Canal", "RSSI",
+                "Calidad", "Distancia_m", "Seguridad", "Oculta"]
+
+    with open(ruta, mode="w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(columnas)
+        for red in redes:
+            writer.writerow([
+                red["ssid"],
+                red["bssid"],
+                red["fabricante"],
+                red["canal"],
+                red["rssi"],
+                red["calidad_txt"],
+                red["distancia_aprox_m"],
+                red["seguridad"],
+                red["oculta"],
+            ])
 
 
 def mostrar_resultados(redes):
@@ -275,8 +313,11 @@ def main():
 
     esperar_placa()      # Bloquea hasta que detecta la placa en el puerto
     redes = escaneo_redes()   # Escanea y construye la lista de diccionarios
-    registrar_redes(redes)    # Guarda el log en un .txt con fecha/hora
+
     mostrar_resultados(redes)  # Imprime la tabla en pantalla
+
+    registrar_redes_txt(redes)
+    registrar_redes_csv(redes)
 
 
 if __name__ == "__main__":
