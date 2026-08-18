@@ -136,18 +136,6 @@ def calidad_señal(rssi):
 
 
 def estimar_distancia(rssi, rssi_1m=-63.4, n=2.0):
-    """
-    Estima la distancia en metros a partir del RSSI.
-
-    Calibrado con un único punto de referencia real:
-      - MOVISTAR_6930_EXT: -59 dBm a ~0.60 m, con una pared de ~39 cm de por medio
-
-    n se ha fijado a 2.0 (espacio casi libre) por no disponer de un segundo
-    punto de calibración; RSSI_1m se ha despejado a partir de la medición real.
-
-    rssi_1m: RSSI de referencia a 1 metro (ajustado a este entorno)
-    n: exponente de pérdida de trayecto (fijado, no calculado)
-    """
     # Modelo clásico de pérdida de trayecto logarítmico:
     #   d = 10 ^ ((RSSI_1m - RSSI) / (10 * n))
     # Con un único punto de calibración esto da una estimación gruesa
