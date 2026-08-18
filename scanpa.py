@@ -4,6 +4,7 @@ import sys
 import os
 import json
 import csv
+import time           # Para el bucle de refresco automático
 from datetime import datetime  # Para poner fecha y hora en el nombre del fichero de log
 
 
@@ -13,33 +14,27 @@ PUERTO = "COM3"  # Puerto serie donde está conectada la placa MicroPython
 
 OUI_LOCAL = "oui_local.json"  # Fichero con la tabla de fabricantes por prefijo MAC (OUI)
 
+INTERVALO_SEGUNDOS = 5  # Cada cuántos segundos se repite el escaneo automáticamente
+
 # Arte ASCII que se imprime al arrancar. Puramente estético, no afecta a la lógica.
 TITULO = r"""
-╔════════════════════════════════════════════════════════════════╗
-║                                                                  ║
-║                                                                  ║
-║   ███████╗ ██████╗ █████╗ ███╗   ██╗                            ║
-║   ██╔════╝██╔════╝██╔══██╗████╗  ██║                            ║
-║   ███████╗██║     ███████║██╔██╗ ██║                            ║
-║   ╚════██║██║     ██╔══██╗██║╚██╗██║                            ║
-║   ███████║╚██████╗██║  ██║██║ ╚████║                            ║
-║   ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═══╝                            ║
-║                                                                  ║
-║   ██████╗   █████╗                                              ║
-║   ██╔══██╗ ██╔══██╗                                             ║
-║   ██████╔╝ ███████║                                             ║
-║   ██╔═══╝  ██╔══██║                                             ║
-║   ██║      ██║  ██║                                             ║
-║   ╚═╝      ╚═╝  ╚═╝                                             ║
-║                                                                  ║
-║                                                                  ║
-║          📡   e s c a n e a n d o   p u n t o s   d e           ║
-║                       a c c e s o   📡                          ║
-║                                                                  ║
-║          ──────────────────────────────────────────             ║
-║              w i f i   ·   n e t w o r k   ·   s c a n          ║
-║                                                                  ║
-╚════════════════════════════════════════════════════════════════╝
+╔═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                                                                     ║
+║                                                                                                                                     ║
+║                                         ███████╗ ██████╗ █████╗ ███╗   ██╗ ██████╗   █████╗                                         ║
+║                                         ██╔════╝██╔════╝██╔══██╗████╗  ██║ ██╔══██╗ ██╔══██╗                                        ║
+║                                         ███████╗██║     ███████║██╔██╗ ██║ ██████╔╝ ███████║                                        ║
+║                                         ╚════██║██║     ██╔══██╗██║╚██╗██║ ██╔═══╝  ██╔══██║                                        ║
+║                                         ███████║╚██████╗██║  ██║██║ ╚████║ ██║      ██║  ██║                                        ║
+║                                         ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═╝      ╚═╝  ╚═╝                                        ║
+║                                                                                                                                     ║
+║                                                                                                                                     ║
+║                                    📡   e s c a n e a n d o   p u n t o s   d e   a c c e s o   📡                                  ║
+║                                                                                                                                     ║
+║                                             ────────────────────────────────────────────                                            ║
+║                                              w i f i   ·   n e t w o r k   ·   s c a n                                              ║
+║                                                                                                                                     ║
+╚═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
 """
 
 # Mapeo de los códigos de seguridad que devuelve MicroPython en sta.scan().
@@ -235,17 +230,40 @@ def escaneo_redes():
     return redes
 
 
-def registrar_redes_txt(redes):
-    # Carpeta donde se guardan todos los logs TXT. Si no existe, se crea
-    # (exist_ok=True evita error si ya existe, así no hay que comprobarlo aparte).
-    carpeta = "log_txt"
-    os.makedirs(carpeta, exist_ok=True)
+# ---------- Logging acumulativo (una sola sesión = un solo fichero) ----------
+# A diferencia de la versión original (que creaba un fichero nuevo por cada
+# escaneo), ahora se abre UN fichero TXT y UN fichero CSV al arrancar el
+# programa, con timestamp en el nombre, y cada vuelta del bucle les AÑADE
+# (append) las filas del nuevo escaneo con su propia marca de tiempo.
+# Así se conserva el histórico completo de toda la sesión en dos ficheros.
 
-    # Nombre del log con fecha y hora, ej: "2026-08-06_15-30-00 registro.txt"
-    nombre = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + " registro.txt"
-    ruta = os.path.join(carpeta, nombre)
+def preparar_ficheros_log():
+    """Crea las carpetas y decide el nombre (fijo para toda la sesión) de los logs."""
+    carpeta_txt = "log_txt"
+    carpeta_csv = "log_csv"
+    os.makedirs(carpeta_txt, exist_ok=True)
+    os.makedirs(carpeta_csv, exist_ok=True)
 
-    with open(ruta, "w", encoding="utf-8") as file:
+    sello = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    ruta_txt = os.path.join(carpeta_txt, f"{sello} sesion.txt")
+    ruta_csv = os.path.join(carpeta_csv, f"{sello} sesion.csv")
+
+    # Cabecera del CSV, una sola vez
+    with open(ruta_csv, mode="w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Timestamp", "SSID", "BSSID", "Fabricante", "Canal", "RSSI",
+                          "Calidad", "Distancia_m", "Seguridad", "Oculta"])
+
+    # El TXT no necesita cabecera, se abre vacío y ya
+    open(ruta_txt, "w", encoding="utf-8").close()
+
+    return ruta_txt, ruta_csv
+
+
+def registrar_redes_txt(redes, ruta_txt):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(ruta_txt, "a", encoding="utf-8") as file:
+        file.write(f"\n--- Escaneo {timestamp} ---\n")
         for red in redes:
             file.write(
                 f"{red['ssid']} | {red['bssid']} | {red['fabricante']} | canal {red['canal']} | "
@@ -254,23 +272,13 @@ def registrar_redes_txt(redes):
             )
 
 
-def registrar_redes_csv(redes):
-    # Carpeta donde se guardan todos los logs CSV. Si no existe, se crea.
-    carpeta = "log_csv"
-    os.makedirs(carpeta, exist_ok=True)
-
-    # Mismo esquema de nombre que el TXT, pero con extensión .csv
-    nombre_archivo = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + " registro.csv"
-    ruta = os.path.join(carpeta, nombre_archivo)
-
-    columnas = ["SSID", "BSSID", "Fabricante", "Canal", "RSSI",
-                "Calidad", "Distancia_m", "Seguridad", "Oculta"]
-
-    with open(ruta, mode="w", newline="", encoding="utf-8") as f:
+def registrar_redes_csv(redes, ruta_csv):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(ruta_csv, mode="a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(columnas)
         for red in redes:
             writer.writerow([
+                timestamp,
                 red["ssid"],
                 red["bssid"],
                 red["fabricante"],
@@ -283,7 +291,15 @@ def registrar_redes_csv(redes):
             ])
 
 
-def mostrar_resultados(redes):
+def limpiar_pantalla():
+    # 'cls' en Windows, 'clear' en Linux/Mac
+    os.system("cls" if os.name == "nt" else "clear")
+
+
+def mostrar_resultados(redes, ultima_actualizacion, ruta_txt, ruta_csv):
+    limpiar_pantalla()
+    print(TITULO)
+
     if not redes:
         print("No se detectaron redes.")
         return
@@ -292,7 +308,7 @@ def mostrar_resultados(redes):
     redes_ordenadas = sorted(redes, key=lambda r: r["rssi"], reverse=True)
 
     # {:<N} = alineación a la izquierda con ancho fijo, para que la tabla quede en columnas
-    print(f"\n{'SSID':<20} {'BSSID':<18} {'Fabricante':<22} {'Canal':<7} {'RSSI':<7} {'Calidad':<12} {'Dist. (m)':<10} {'Seguridad':<18} {'Oculta'}")
+    print(f"{'SSID':<20} {'BSSID':<18} {'Fabricante':<22} {'Canal':<7} {'RSSI':<7} {'Calidad':<12} {'Dist. (m)':<10} {'Seguridad':<18} {'Oculta'}")
     print("-" * 135)
 
     for red in redes_ordenadas:
@@ -305,19 +321,32 @@ def mostrar_resultados(redes):
     print(f"\nRed más potente: {mejor['ssid']} | {mejor['fabricante']} | {mejor['rssi']} dBm | "
           f"Calidad: {mejor['calidad_txt']} ({mejor['calidad_pct']}%) | "
           f"Distancia aprox.: {mejor['distancia_aprox_m']} m\n")
-
+    print("-" * 135)
+    print(f"\n🔄 Actualizando cada {INTERVALO_SEGUNDOS} s | Última actualización: {ultima_actualizacion}")
+    print("   (Ctrl+C para detener)\n")
+    print("-" * 135)
 
 def main():
+    limpiar_pantalla()
     print(TITULO)
     input("Pulsa Enter para comenzar...")
 
-    esperar_placa()      # Bloquea hasta que detecta la placa en el puerto
-    redes = escaneo_redes()   # Escanea y construye la lista de diccionarios
+    esperar_placa()  # Bloquea hasta que detecta la placa en el puerto
 
-    mostrar_resultados(redes)  # Imprime la tabla en pantalla
+    ruta_txt, ruta_csv = preparar_ficheros_log()  # Un solo par de ficheros para toda la sesión
 
-    registrar_redes_txt(redes)
-    registrar_redes_csv(redes)
+    # Bucle de actualización automática: escanea, muestra, registra, espera, repite.
+    while True:
+        redes = escaneo_redes()
+        ultima_actualizacion = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        mostrar_resultados(redes, ultima_actualizacion, ruta_txt, ruta_csv)
+
+        if redes:
+            registrar_redes_txt(redes, ruta_txt)
+            registrar_redes_csv(redes, ruta_csv)
+
+        time.sleep(INTERVALO_SEGUNDOS)
 
 
 if __name__ == "__main__":
