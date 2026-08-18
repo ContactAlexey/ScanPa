@@ -1,0 +1,110 @@
+<svg width="100%" viewBox="0 0 680 660" xmlns="http://www.w3.org/2000/svg" role="img">
+<title>Animación del funcionamiento de ScanPa</title>
+<desc>Diagrama animado: detectar placa, escanear redes WiFi, procesar cada red, mostrar tabla, guardar TXT y CSV, esperar N segundos, y repetir el ciclo hasta Ctrl+C.</desc>
+<style>
+:root{
+  --gray-fill:#F1EFE8; --gray-stroke:#5F5E5A; --gray-text:#2C2C2A;
+  --blue-fill:#E6F1FB; --blue-stroke:#185FA5; --blue-text:#0C447C;
+  --purple-fill:#EEEDFE; --purple-stroke:#534AB7; --purple-text:#3C3489;
+  --teal-fill:#E1F5EE; --teal-stroke:#0F6E56; --teal-text:#085041;
+  --coral-fill:#FAECE7; --coral-stroke:#993C1D; --coral-text:#712B13;
+  --line:#73726c; --muted:#5F5E5A; --dot:#D85A30;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --gray-fill:#444441; --gray-stroke:#B4B2A9; --gray-text:#D3D1C7;
+    --blue-fill:#0C447C; --blue-stroke:#85B7EB; --blue-text:#B5D4F4;
+    --purple-fill:#3C3489; --purple-stroke:#AFA9EC; --purple-text:#CECBF6;
+    --teal-fill:#085041; --teal-stroke:#5DCAA5; --teal-text:#9FE1CB;
+    --coral-fill:#712B13; --coral-stroke:#F0997B; --coral-text:#F5C4B3;
+    --line:#9c9a92; --muted:#B4B2A9; --dot:#F0997B;
+  }
+}
+text{ font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+.box{ stroke-width:1; }
+.th{ font-size:14px; font-weight:600; }
+.ts{ font-size:12px; }
+</style>
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="var(--line)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+
+<!-- Conector fijo (una sola vez): placa -> escaneo -->
+<line x1="340" y1="86" x2="340" y2="124" stroke="var(--line)" stroke-width="1" marker-end="url(#arrow)"/>
+<!-- Conectores del ciclo -->
+<line x1="340" y1="182" x2="340" y2="220" stroke="var(--line)" stroke-width="1" marker-end="url(#arrow)"/>
+<line x1="340" y1="278" x2="340" y2="316" stroke="var(--line)" stroke-width="1" marker-end="url(#arrow)"/>
+<line x1="340" y1="374" x2="340" y2="412" stroke="var(--line)" stroke-width="1" marker-end="url(#arrow)"/>
+<line x1="340" y1="470" x2="340" y2="508" stroke="var(--line)" stroke-width="1" marker-end="url(#arrow)"/>
+
+<!-- Flecha de vuelta del ciclo -->
+<path d="M500,538 C 600,538 600,154 500,154" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4" marker-end="url(#arrow)"/>
+<text class="ts" x="612" y="346" fill="var(--muted)" text-anchor="middle" transform="rotate(90 612 346)">se repite hasta Ctrl+C</text>
+
+<!-- Box 1: Detectar placa -->
+<g>
+  <rect class="box" x="180" y="30" width="320" height="56" rx="8" fill="var(--gray-fill)" stroke="var(--gray-stroke)"/>
+  <text class="th" x="340" y="52" text-anchor="middle" dominant-baseline="central" fill="var(--gray-text)">Detectar placa</text>
+  <text class="ts" x="340" y="70" text-anchor="middle" dominant-baseline="central" fill="var(--gray-text)">mpremote conecta por USB</text>
+</g>
+
+<!-- Box 2: Escanear -->
+<g>
+  <rect class="box" x="180" y="126" width="320" height="56" rx="8" fill="var(--blue-fill)" stroke="var(--blue-stroke)"/>
+  <rect x="180" y="126" width="320" height="56" rx="8" fill="var(--blue-stroke)" opacity="0">
+    <animate attributeName="opacity" values="0;0.35;0" dur="1.4s" begin="0s" repeatCount="indefinite"/>
+  </rect>
+  <text class="th" x="340" y="148" text-anchor="middle" dominant-baseline="central" fill="var(--blue-text)">Escanear redes WiFi</text>
+  <text class="ts" x="340" y="166" text-anchor="middle" dominant-baseline="central" fill="var(--blue-text)">sta.scan() en la placa</text>
+</g>
+
+<!-- Box 3: Procesar -->
+<g>
+  <rect class="box" x="180" y="222" width="320" height="56" rx="8" fill="var(--purple-fill)" stroke="var(--purple-stroke)"/>
+  <rect x="180" y="222" width="320" height="56" rx="8" fill="var(--purple-stroke)" opacity="0">
+    <animate attributeName="opacity" values="0;0.35;0" dur="1.4s" begin="1.4s" repeatCount="indefinite"/>
+  </rect>
+  <text class="th" x="340" y="244" text-anchor="middle" dominant-baseline="central" fill="var(--purple-text)">Procesar cada red</text>
+  <text class="ts" x="340" y="262" text-anchor="middle" dominant-baseline="central" fill="var(--purple-text)">fabricante · calidad · distancia</text>
+</g>
+
+<!-- Box 4: Mostrar -->
+<g>
+  <rect class="box" x="180" y="318" width="320" height="56" rx="8" fill="var(--teal-fill)" stroke="var(--teal-stroke)"/>
+  <rect x="180" y="318" width="320" height="56" rx="8" fill="var(--teal-stroke)" opacity="0">
+    <animate attributeName="opacity" values="0;0.35;0" dur="1.4s" begin="2.8s" repeatCount="indefinite"/>
+  </rect>
+  <text class="th" x="340" y="340" text-anchor="middle" dominant-baseline="central" fill="var(--teal-text)">Mostrar tabla</text>
+  <text class="ts" x="340" y="358" text-anchor="middle" dominant-baseline="central" fill="var(--teal-text)">terminal actualizada</text>
+</g>
+
+<!-- Box 5: Guardar log -->
+<g>
+  <rect class="box" x="180" y="414" width="320" height="56" rx="8" fill="var(--coral-fill)" stroke="var(--coral-stroke)"/>
+  <rect x="180" y="414" width="320" height="56" rx="8" fill="var(--coral-stroke)" opacity="0">
+    <animate attributeName="opacity" values="0;0.35;0" dur="1.4s" begin="4.2s" repeatCount="indefinite"/>
+  </rect>
+  <text class="th" x="340" y="436" text-anchor="middle" dominant-baseline="central" fill="var(--coral-text)">Guardar TXT + CSV</text>
+  <text class="ts" x="340" y="454" text-anchor="middle" dominant-baseline="central" fill="var(--coral-text)">añade al log de la sesión</text>
+</g>
+
+<!-- Box 6: Esperar -->
+<g>
+  <rect class="box" x="180" y="510" width="320" height="56" rx="8" fill="var(--gray-fill)" stroke="var(--gray-stroke)"/>
+  <rect x="180" y="510" width="320" height="56" rx="8" fill="var(--gray-stroke)" opacity="0">
+    <animate attributeName="opacity" values="0;0.35;0" dur="1.4s" begin="5.6s" repeatCount="indefinite"/>
+  </rect>
+  <text class="th" x="340" y="532" text-anchor="middle" dominant-baseline="central" fill="var(--gray-text)">Esperar N segundos</text>
+  <text class="ts" x="340" y="550" text-anchor="middle" dominant-baseline="central" fill="var(--gray-text)">pausa antes de repetir</text>
+</g>
+
+<!-- Punto animado que recorre el ciclo -->
+<circle r="6" fill="var(--dot)">
+  <animateMotion dur="7s" repeatCount="indefinite"
+    path="M340,154 L340,250 L340,346 L340,442 L340,538 C 560,538 560,154 340,154 Z"/>
+</circle>
+
+<text class="ts" x="340" y="620" text-anchor="middle" fill="var(--muted)">Ciclo continuo · se detiene con Ctrl+C</text>
+</svg>
