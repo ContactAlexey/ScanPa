@@ -287,6 +287,10 @@ def limpiar_pantalla():
 def mostrar_resultados(redes, ultima_actualizacion, ruta_txt, ruta_csv):
     limpiar_pantalla()
     print(TITULO)
+    print("-" * 135)
+    print(f"\n Se han detectado {len(redes)} redes en total.\n")
+    print("-" * 135)
+
 
     if not redes:
         print("No se detectaron redes.")
