@@ -100,10 +100,10 @@ text{ font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
   <text class="ts" x="340" y="550" text-anchor="middle" dominant-baseline="central" fill="var(--gray-text)">pausa antes de repetir</text>
 </g>
 
-<!-- Punto animado que recorre el ciclo -->
+<!-- Punto animado que recorre el ciclo exactamente por las líneas y la curva dibujadas -->
 <circle r="6" fill="var(--dot)">
-  <animateMotion dur="7s" repeatCount="indefinite"
-    path="M340,154 L340,250 L340,346 L340,442 L340,538 C 560,538 560,154 340,154 Z"/>
+  <animateMotion dur="7s" repeatCount="indefinite" rotate="auto"
+    path="M340,154 L340,250 L340,346 L340,442 L340,538 L500,538 C 600,538 600,154 500,154 L340,154 Z"/>
 </circle>
 
 <text class="ts" x="340" y="620" text-anchor="middle" fill="var(--muted)">Ciclo continuo · se detiene con Ctrl+C</text>
