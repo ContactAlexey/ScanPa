@@ -10,6 +10,7 @@ Al arrancar:
   1. Instala solo lo necesario (pyserial y mpremote) si faltan.
   2. Abre un servidor local en http://127.0.0.1:8765 y lanza el navegador.
   3. Todo se controla desde la interfaz: iniciar/detener, histórico, ajustes.
+  4. Al cerrar la pestaña del navegador, el programa se cierra solo.
 
 Carpetas (junto a este fichero):
     log_csv/             -> log CSV por sesión
@@ -61,6 +62,10 @@ OUI_LOCAL = os.path.join(BASE, "oui_local.json")
 
 HOST = os.environ.get("SCANPA_HOST", "127.0.0.1")  # 0.0.0.0 para verlo desde el móvil (sin contraseña!)
 PUERTO_WEB = int(os.environ.get("SCANPA_PORT", "8765"))
+
+# Cierre automático al cerrar el navegador
+GRACIA_CIERRE = int(os.environ.get("SCANPA_GRACIA", "8"))  # segundos sin pestañas antes de cerrar (permite recargar con F5)
+ESPERA_PRIMERA_CONEXION = 60  # segundos que se espera a que el navegador abra la página la primera vez
 
 NO_WINDOW = 0x08000000 if os.name == "nt" else 0  # evita que parpadee una consola en Windows
 
@@ -558,6 +563,50 @@ def snapshot():
         }
 
 
+# ---------- Cierre automático al cerrar el navegador ----------
+
+_clientes = 0              # pestañas conectadas ahora mismo (conexiones SSE abiertas)
+_hubo_cliente = False      # ¿se ha conectado alguna pestaña alguna vez?
+_ultimo_cliente = time.time()  # momento en que se fue la última pestaña
+_clientes_lock = threading.Lock()
+_servidor = None           # se asigna en main()
+
+
+def cliente_conectado():
+    global _clientes, _hubo_cliente
+    with _clientes_lock:
+        _clientes += 1
+        _hubo_cliente = True
+
+
+def cliente_desconectado():
+    global _clientes, _ultimo_cliente
+    with _clientes_lock:
+        _clientes = max(0, _clientes - 1)
+        _ultimo_cliente = time.time()
+
+
+def vigilar_navegador():
+    """Cierra el programa cuando ya no queda ninguna pestaña abierta."""
+    inicio = time.time()
+    while True:
+        time.sleep(1)
+        with _clientes_lock:
+            n, visto, ultimo = _clientes, _hubo_cliente, _ultimo_cliente
+        if n > 0:
+            continue
+        if visto:
+            sin_pestanas = time.time() - ultimo > GRACIA_CIERRE
+        else:
+            sin_pestanas = time.time() - inicio > ESPERA_PRIMERA_CONEXION
+        if sin_pestanas:
+            print("\nNavegador cerrado: cerrando SCANPA...")
+            if _servidor is not None:
+                # shutdown() bloquea hasta que serve_forever() termina, así que va en otro hilo
+                threading.Thread(target=_servidor.shutdown, daemon=True).start()
+            return
+
+
 # ---------- Bucle de escaneo ----------
 
 _placa_lock = threading.Lock()  # el puerto serie solo admite un cliente a la vez
@@ -758,6 +807,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-cache")
         self.send_header("X-Accel-Buffering", "no")
         self.end_headers()
+        cliente_conectado()
         visto = -1
         try:
             while True:
@@ -773,6 +823,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.flush()
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
             pass
+        finally:
+            cliente_desconectado()
 
     # --- POST ---
     def do_POST(self):
@@ -860,6 +912,8 @@ class Handler(BaseHTTPRequestHandler):
 # ---------- Arranque ----------
 
 def main():
+    global _servidor
+
     # Consola de Windows: evita errores con tildes y símbolos
     for flujo in (sys.stdout, sys.stderr):
         try:
@@ -894,10 +948,12 @@ def main():
         print("No se pudo abrir ningún puerto local libre.")
         sys.exit(1)
     servidor.daemon_threads = True
+    _servidor = servidor
 
     url = f"http://{'127.0.0.1' if HOST in ('0.0.0.0', '') else HOST}:{servidor.server_address[1]}"
-    print(f"\nInterfaz lista en  {url}\n(Ctrl+C para salir)\n")
+    print(f"\nInterfaz lista en  {url}\n(Ctrl+C para salir; también se cierra al cerrar el navegador)\n")
     threading.Timer(1.0, lambda: webbrowser.open(url)).start()
+    threading.Thread(target=vigilar_navegador, daemon=True).start()
 
     try:
         servidor.serve_forever()
